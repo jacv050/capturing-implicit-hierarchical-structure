@@ -1,14 +1,14 @@
-# [Continuous Hierarchical Representations with Poincaré Variational Auto-Encoders](https://arxiv.org/abs/1901.06033)
+# [Capturing implicit hierarchical structure in 3D biomedical images with self-supervised hyperbolic representations](https://arxiv.org/pdf/2012.01644.pdf)
 
 ![demonstrative figure](images/tree.png)
 
 Code for reproducing the experiments in the paper:
 ```
 @inproceedings{mathieu2019poincare,
-  title={Continuous Hierarchical Representations with Poincar\'e Variational Auto-Encoders},
-  author={Mathieu, Emile and Le Lan, Charline and Maddison, Chris J. and Tomioka, Ryota and Whye Teh, Yee},
+  title={Capturing implicit hierarchical structure in 3D biomedical images with self-supervised hyperbolic representations},
+  author={Hsu, Joy* and Gu, Jeffrey* and Wu, Gong Her and Chiu, Wah and Yeung, Serena},
   booktitle={Advances in Neural Information Processing Systems},
-  year={2019}
+  year={2021}
 }
 ```
 
