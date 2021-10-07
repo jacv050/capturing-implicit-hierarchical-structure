@@ -15,6 +15,9 @@ Code for reproducing the experiments in the paper:
 ## Prerequisites
 `pip install -r -U requirements.txt` or `python3 setup.py install --user`
 
+## Data
+The simple synthetic dataset can be downloaded [here](https://drive.google.com/file/d/1mdRuSkXmTof9vq62FSmoZXneUme_97dc/view?usp=sharing) and the irregular synthetic dataset can be downloaded [here](https://drive.google.com/file/d/1XGx8GQlNGCStmxjYatWGBGAW25e2zxTn/view?usp=sharing). 
+
 ## Models
 
 ### VAE (`--manifold Euclidean`):
