@@ -1,6 +1,6 @@
 # [Capturing implicit hierarchical structure in 3D biomedical images with self-supervised hyperbolic representations](https://arxiv.org/pdf/2012.01644.pdf)
 
-![demonstrative figure](images/hyp-neurips-pull-figure.png)
+![demonstrative figure](images/methods_final_final_final.png)
 
 Code for reproducing the experiments in the paper:
 ```
