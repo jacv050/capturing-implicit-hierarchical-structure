@@ -24,7 +24,9 @@ The simple synthetic dataset can be downloaded from Google Drive [here](https://
 - Prior distribution (`--prior`): `Normal` (`WrappedNormal` is theoretically equivalent)
 - Posterior distribution (`--posterior`): `Normal`  (`WrappedNormal` is theoretically equivalent)
 - Decoder architecture (`--dec`): `LinearConv` (3D Conv) 
-- Encoder architecture (`--enc`): `LinearConv` (3D Conv) 
+- Encoder architecture (`--enc`): `LinearConv` (3D Conv)
+- Triplet loss (`triplet-loss`): Whether to use hierarchical triplet loss
+    - `--triplet-weight`: how much to weight triplet loss relative to the ELBO loss
     
 ### PVAE (`--manifold PoincareBall`):
 - Curvature (`--c`): 1.0
@@ -34,6 +36,8 @@ The simple synthetic dataset can be downloaded from Google Drive [here](https://
     - `WrappedConv`: 3D Convolutional decoder
     - `GyroConv`: 3D Convolutional decoder with gyroplane convolution as first layer
 - Encoder architecture (`--enc`): `WrappedConv` (3D Conv)
+- - Triplet loss (`triplet-loss`): Whether to use hierarchical triplet loss
+    - `--triplet-weight`: how much to weight triplet loss relative to the (Riemannian) ELBO loss (see Mathieu et al 2019)
 
 ## Run experiments
 
