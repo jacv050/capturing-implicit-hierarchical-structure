@@ -75,7 +75,15 @@ Images are segmentated by clustering the pixelwise latent representations. Some 
      - `sc`: Level 2 in the paper (set `--clusters` to `4`)
      - `all`: Level 3 in the paper (set `--clusters` to `8`)
 
-Sample command:
+Sample command (Level 1):
 ```
 python3 pvae/segmentation/segment_and_score.py --model-name test --exp-dir [path to experiment directory] -c 1 --num-images 20 --latent-dim 2 --latent-folder hyperbolic-mus-inference --segmentation-folder hyperbolic-segmented --image-folder hyperbolic-vis --dataset [path to synthetic dataset] --clusters 2 --score dice --hyperbolic --image-height 50 --image-width 50 --image-depth 50 --verbose --score-type bg --cluster-alg kmeans_hyp
+```
+Sample command (Level 2):
+```
+pvae/segmentation/segment_and_score.py --model-name test --exp-dir [path to experiment directory] -c 1 --num-images 20 --latent-dim 2 --latent-folder hyperbolic-mus-inference --segmentation-folder hyperbolic-segmented --image-folder hyperbolic-vis --dataset [path to synthetic dataset] --clusters 4 --score dice --hyperbolic --image-height 50 --image-width 50 --image-depth 50 --verbose --score-type sc -—cluster-alg kmeans_hyp
+```
+Sample command (Level 3):
+```
+pvae/segmentation/segment_and_score.py --model-name test --exp-dir [path to experiment directory] -c 1 --num-images 20 --latent-dim 2 --latent-folder hyperbolic-mus-inference --segmentation-folder hyperbolic-segmented --image-folder hyperbolic-vis --dataset [path to synthetic dataset] --clusters 8 --score dice --hyperbolic --image-height 50 --image-width 50 --image-depth 50 --verbose --score-type all --cluster-alg kmeans_hyp
 ```
