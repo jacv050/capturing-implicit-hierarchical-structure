@@ -13,6 +13,8 @@ import torch
 from torch import optim
 import numpy as np
 
+import pickle
+
 from utils import Logger, Timer, save_model, save_vars, probe_infnan
 import objectives
 import models
@@ -29,6 +31,7 @@ parser.add_argument('--manifold', type=str, default='PoincareBall', choices=['Eu
 parser.add_argument('--name', type=str, default='.', help='experiment name (default: None)')
 parser.add_argument('--save-freq', type=int, default=0, help='print objective values every value (if positive)')
 parser.add_argument('--skip-test', action='store_true', default=False, help='skip test dataset computations')
+parser.add_argument('--eval', action='store_true', default=False, help='run inference')
 
 ### Dataset
 parser.add_argument('--data-params', nargs='+', default=[], help='parameters which are passed to the dataset loader')
@@ -44,11 +47,15 @@ parser.add_argument('--batch-size', type=int, default=64, metavar='N', help='bat
 parser.add_argument('--beta1', type=float, default=0.9, help='first parameter of Adam (default: 0.9)')
 parser.add_argument('--beta2', type=float, default=0.999, help='second parameter of Adam (default: 0.900)')
 parser.add_argument('--lr', type=float, default=1e-4, help='learnign rate for optimser (default: 1e-4)')
+parser.add_argument('--clip', type=float, default=-1., help='max norm size for gradient clipping')
 
 ## Objective
 parser.add_argument('--K', type=int, default=1, metavar='K',  help='number of samples to estimate ELBO (default: 1)')
 parser.add_argument('--beta', type=float, default=1.0, metavar='B', help='coefficient of beta-VAE (default: 1.0)')
 parser.add_argument('--analytical-kl', action='store_true', default=False, help='analytical kl when possible')
+parser.add_argument('--triplet-loss', action='store_true', default=False, help='add triplet loss')
+parser.add_argument('--triplet-weight',  type=float, default=1e3)
+parser.add_argument('--triplet-loss-dist', action='store_true', default=False, help='triplet loss with dist')
 
 ### Model
 parser.add_argument('--latent-dim', type=int, default=10, metavar='L', help='latent dimensionality (default: 10)')
@@ -61,9 +68,9 @@ parser.add_argument('--num-hidden-layers', type=int, default=1, metavar='H', hel
 parser.add_argument('--hidden-dim', type=int, default=100, help='number of hidden layers dimensions (default: 100)')
 parser.add_argument('--nl', type=str, default='ReLU', help='non linearity')
 parser.add_argument('--enc', type=str, default='Wrapped', help='allow to choose different implemented encoder',
-                    choices=['Linear', 'Wrapped', 'Mob'])
+                    choices=['Linear', 'Wrapped', 'Mob', 'WrappedConv', 'LinearConv'])
 parser.add_argument('--dec', type=str, default='Wrapped', help='allow to choose different implemented decoder',
-                    choices=['Linear', 'Wrapped', 'Geo', 'Mob'])
+                    choices=['Linear', 'Wrapped', 'Geo', 'Mob', 'WrappedConv', 'LinearConv', 'GyroConv'])
 
 ## Prior
 parser.add_argument('--prior-iso', action='store_true', default=False, help='isotropic prior')
@@ -91,13 +98,13 @@ torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = True
 
 # Create directory for experiment if necessary
-directory_name = 'experiments/{}'.format(args.name)
+directory_name = os.path.join(args.save_dir, 'hyperbolic-model-checkpoints/{}'.format(args.name))
 if args.name != '.':
     if not os.path.exists(directory_name):
         os.makedirs(directory_name)
-    runPath = mkdtemp(prefix=runId, dir=directory_name)
+    runPath = directory_name
 else:
-    runPath = mkdtemp(prefix=runId, dir=directory_name)
+    runPath = directory_name
 sys.stdout = Logger('{}/run.log'.format(runPath))
 print('RunID:', runId)
 
@@ -120,23 +127,49 @@ loss_function = getattr(objectives, args.obj + '_objective')
 
 def train(epoch, agg):
     model.train()
-    b_loss, b_recon, b_kl = 0., 0., 0.
-    for i, (data, _) in enumerate(train_loader):
-        data = data.to(device)
+    
+    b_loss, b_recon, b_kl, b_triplet = 0., 0., 0., 0.
+    for i, (parent, positive_child, negative_child, target_norm) in enumerate(train_loader):
+        parent = parent.to(device)
+        positive_child = positive_child.to(device)
+        negative_child = negative_child.to(device)
+        
         optimizer.zero_grad()
-        qz_x, px_z, lik, kl, loss = loss_function(model, data, K=args.K, beta=args.beta, components=True, analytical_kl=args.analytical_kl)
+        
+        is_poincare = False
+        if args.manifold == 'PoincareBall':
+            is_poincare = True
+        
+        if args.triplet_loss:
+            qz_x, px_z, lik, kl, triplet, loss = loss_function(model, parent, positive_child, negative_child, K=args.K, beta=args.beta, components=True, analytical_kl=args.analytical_kl, triplet_loss=args.triplet_loss, triplet_loss_dist=args.triplet_loss_dist, is_poincare=is_poincare, triplet_weight=args.triplet_weight)
+        else:
+            qz_x, px_z, lik, kl, loss = loss_function(model, data, K=args.K, beta=args.beta, components=True, analytical_kl=args.analytical_kl)
+        
         probe_infnan(loss, "Training loss:")
         loss.backward()
+        
+        if args.clip > 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
+        
         optimizer.step()
 
         b_loss += loss.item()
         b_recon += -lik.mean(0).sum().item()
         b_kl += kl.sum(-1).mean(0).sum().item()
+        
+        if args.triplet_loss:
+            b_triplet += triplet.item()
 
     agg['train_loss'].append(b_loss / len(train_loader.dataset))
     agg['train_recon'].append(b_recon / len(train_loader.dataset))
     agg['train_kl'].append(b_kl / len(train_loader.dataset))
-    if epoch % 1 == 0:
+    
+    if args.triplet_loss:
+        agg['train_triplet'].append(b_triplet / len(train_loader.dataset))
+        
+    if epoch % 1 == 0 and args.triplet_loss:
+        print('====> Epoch: {:03d} Loss: {:.2f} Recon: {:.2f} KL: {:.2f} Triplet: {:.4f}'.format(epoch, agg['train_loss'][-1], agg['train_recon'][-1], agg['train_kl'][-1], agg['train_triplet'][-1]))
+    elif epoch % 1 == 0:
         print('====> Epoch: {:03d} Loss: {:.2f} Recon: {:.2f} KL: {:.2f}'.format(epoch, agg['train_loss'][-1], agg['train_recon'][-1], agg['train_kl'][-1]))
 
 
@@ -156,21 +189,43 @@ def test(epoch, agg):
     agg['test_loss'].append(b_loss / len(test_loader.dataset))
     agg['test_mlik'].append(b_mlik / len(test_loader.dataset))
     print('====>             Test loss: {:.4f} mlik: {:.4f}'.format(agg['test_loss'][-1], agg['test_mlik'][-1]))
+    
+    
+def evaluate():
+    model.load_state_dict(torch.load(runPath + '/model.rar'))
+    model.eval()
+    all_mus = []
+    with torch.no_grad():
+        for i, (data, labels) in enumerate(test_loader):
+            data = data.to(device)            
+            mus = model.getMus(data, runPath)
+            mus = mus.data.cpu().numpy()
+            all_mus.append(mus)
+    all_mus = np.concatenate(all_mus) 
+
+    save_path = os.path.join(args.save_dir, 'hyperbolic-mus-inference/{}'.format(args.name))
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    pickle.dump(all_mus, open(save_path + '/mus.p', 'wb'))
 
 
 if __name__ == '__main__':
     with Timer('ME-VAE') as t:
         agg = defaultdict(list)
-        print('Starting training...')
+        if args.eval:
+            print('Starting testing...')
+            evaluate()
 
-        model.init_last_layer_bias(train_loader)
-        for epoch in range(1, args.epochs + 1):
-            train(epoch, agg)
-            if args.save_freq == 0 or epoch % args.save_freq == 0:
-                if not args.skip_test: test(epoch, agg)
-                model.generate(runPath, epoch)
-            save_model(model, runPath + '/model.rar')
-            save_vars(agg, runPath + '/losses.rar')
+        else:
+            print('Starting training...')
+            model.init_last_layer_bias(train_loader)
+            for epoch in range(1, args.epochs + 1):
+                train(epoch, agg)
+                if args.save_freq == 0 or epoch % args.save_freq == 0:
+                    if not args.skip_test: test(epoch, agg) 
 
-        print('p(z) params:')
-        print(model.pz_params)
+                save_model(model, runPath + '/model.rar')
+                #save_vars(agg, runPath + '/losses.rar')
+
+            print('p(z) params:')
+            print(model.pz_params) 

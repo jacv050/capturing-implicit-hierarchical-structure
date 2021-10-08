@@ -88,3 +88,74 @@ class LogZero(nn.Module):
     def forward(self, input):
         return self.manifold.logmap0(input)
 
+################################################################################
+#
+# Hyperbolic VAE encoders/decoders
+#
+################################################################################
+
+class GyroplaneConvLayer(nn.Module):
+    """
+    Gyroplane 3D convolutional layer based on GeodesicLayer
+    Maps Poincare ball to Euclidean space of dim filters
+    """
+    def __init__(self, in_features, out_channels, kernel_size, manifold):
+        super(GyroplaneConvLayer, self).__init__()
+        
+        self.in_features = in_features
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.manifold = manifold
+
+        self.gyroplane_layer = GeodesicLayer(self.in_features, self.out_channels, self.manifold)
+
+    def forward(self, input):
+        """
+        input: [batch_size, in_channels, width, height, depth, manifold_dim] # ([128, 1, 2, 2, 2])
+        output: [batch_size, out_channels, width, height, depth]
+        """ 
+        
+        #input = torch.zeros([8 * 8 * 8, 128, 2], dtype=torch.float32, device='cuda') # DELETE THIS & CHANGE KERNEL SIZE
+        
+        sampled_dim = input.shape[0]
+        batch = input.shape[1]
+        manifold_dim = input.shape[2]
+        size = self.kernel_size
+        s = size // 2
+        
+        input = input.permute(1, 0, 2).view(batch,
+                           int(round(sampled_dim**(1/3.0))),
+                           int(round(sampled_dim**(1/3.0))),
+                           int(round(sampled_dim**(1/3.0))),
+                           manifold_dim)
+        
+        padded_input = torch.zeros((batch, 
+                                    input.shape[1] + 2 * s, 
+                                    input.shape[2] + 2 * s, 
+                                    input.shape[3] + 2 * s, 
+                                    manifold_dim), device='cuda')
+        padded_input[:, s:input.shape[1]+s, s:input.shape[2]+s, s:input.shape[3]+s, :] = input
+        input = padded_input
+        
+        width = input.shape[1]
+        height = input.shape[2]
+        depth = input.shape[3]
+                
+        combined_output = []
+        for i in range(s, width - s):
+            for j in range(s, height - s):
+                for k in range(s, depth - s):
+                    patch = input[:, i-s: i+s+1, j-s: j+s+1, k-s: k-s+1, :]
+                    patch = patch.reshape(batch, size * size * size, manifold_dim)
+
+                    layer_output = self.gyroplane_layer(patch)
+                    layer_output = torch.sum(layer_output, dim = 1)
+                    
+                    combined_output.append(layer_output)
+        combined_output = torch.stack(combined_output).permute(1, 2, 0).view(batch,
+                                                                             -1,
+                                                                             width - 2 * s,
+                                                                             height - 2 * s,
+                                                                             depth - 2 * s)        
+
+        return combined_output
