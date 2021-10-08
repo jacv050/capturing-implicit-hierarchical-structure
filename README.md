@@ -70,7 +70,7 @@ Images are segmentated by clustering the pixelwise latent representations. Some 
  - Score (`--score`): 
      - `dice`: DICE score
      - `iou`: Intersection over Union
- - Score type (`--score-type`): how detailed ground truth annotations to use
+ - Score type (`--score-type`): set the ground truth for different levels of hierarchy
      - `bg`: Foreground/background (corresponds to Level 1 in the paper) (set `--clusters` to `2`)
      - `sc`: Level 2 in the paper (set `--clusters` to `4`)
      - `all`: Level 3 in the paper (set `--clusters` to `8`)
