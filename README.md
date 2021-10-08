@@ -76,5 +76,5 @@ Images are segmentated by clustering the pixelwise latent representations. Some 
 
 Sample command:
 ```
-python3 pvae/segmentation/segment_and_score.py --model-name test --exp-dir [path to experiment directory] -c 1 --num-images 20 --latent-dim 2 --latent-folder hyperbolic-mus-inference --segmentation-folder hyperbolic-segmented --image-folder hyperbolic-vis --dataset [your dataset] --clusters 2 --score dice --hyperbolic --image-height 50 --image-width 50 --image-depth 50 --verbose --score-type bg --cluster-alg kmeans_hyp
+python3 pvae/segmentation/segment_and_score.py --model-name test --exp-dir [path to experiment directory] -c 1 --num-images 20 --latent-dim 2 --latent-folder hyperbolic-mus-inference --segmentation-folder hyperbolic-segmented --image-folder hyperbolic-vis --dataset [path to synthetic dataset] --clusters 2 --score dice --hyperbolic --image-height 50 --image-width 50 --image-depth 50 --verbose --score-type bg --cluster-alg kmeans_hyp
 ```
