@@ -23,26 +23,23 @@ The simple synthetic dataset can be downloaded from Google Drive [here](https://
 ### VAE (`--manifold Euclidean`):
 - Prior distribution (`--prior`): `Normal` (`WrappedNormal` is theoretically equivalent)
 - Posterior distribution (`--posterior`): `Normal`  (`WrappedNormal` is theoretically equivalent)
-- Decoder architecture (`--dec`): `Linear` (MLP) (`Wrapped` is theoretically equivalent)
-- Encoder architecture (`--enc`): `Linear` (MLP) (`Wrapped` is theoretically equivalent)
+- Decoder architecture (`--dec`): `LinearConv` (3D Conv) 
+- Encoder architecture (`--enc`): `LinearConv` (3D Conv) 
     
 ### PVAE (`--manifold PoincareBall`):
 - Curvature (`--c`): 1.0
-- Prior distribution (`--prior`): `WrappedNormal` or `RiemannianNormal`
-- Posterior distribution (`--posterior`): `WrappedNormal` or `RiemannianNormal`
+- Prior distribution (`--prior`): `WrappedNormal`
+- Posterior distribution (`--posterior`): `WrappedNormal`
 - Decoder architecture (`--dec`):
-    - `Linear` (MLP)
-    - `Wrapped` (logarithm map followed by MLP),
-    - `Geo` (first layer is based on geodesic distance to hyperplanes, followed by MLP)
-    - `Mob` (based on Hyperbolic feed-forward layers from Ganea et al (2018))
-- Encoder architecture (`--enc`): `Wrapped` or `Mob`
-
+    - `WrappedConv`: 3D Convolutional decoder
+    - `GyroConv`: 3D Convolutional decoder with gyroplane convolution as first layer
+- Encoder architecture (`--enc`): `WrappedConv` (3D Conv)
 
 ## Run experiments
 
 ### Synthetic dataset
 ```
-python3 pvae/main.py --model tree --manifold PoincareBall --latent-dim 2 --hidden-dim 200 --prior-std 1.7 --c 1.2 --data-size 50 --data-params 6 2 1 1 5 5 --dec Wrapped --enc Wrapped  --prior RiemannianNormal --posterior RiemannianNormal --epochs 1000 --save-freq 1000 --lr 1e-3 --batch-size 64 --iwae-samples 5000
+python3 pvae/main.py --model toy_sampled_triplet_conv --manifold PoincareBall --latent-dim 2 --hidden-dim 300 --prior WrappedNormal --posterior WrappedNormal --dec GyroConv --enc WrappedConv --lr 5e-7 --epochs 8 --save-freq 1 --batch-size 128 --iwae-samples 5000 --skip-test --name [your model name] --clip 8 --K 8 --triplet-loss --triplet-loss-dist --triplet-weight 1e3 --save-dir [your save directory]
 ```
 
 ### MNIST dataset
