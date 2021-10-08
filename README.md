@@ -36,7 +36,7 @@ The simple synthetic dataset can be downloaded from Google Drive [here](https://
     - `WrappedConv`: 3D Convolutional decoder
     - `GyroConv`: 3D Convolutional decoder with gyroplane convolution as first layer
 - Encoder architecture (`--enc`): `WrappedConv` (3D Conv)
-- - Triplet loss (`triplet-loss`): Whether to use hierarchical triplet loss
+- Triplet loss (`triplet-loss`): Whether to use hierarchical triplet loss
     - `--triplet-weight`: how much to weight triplet loss relative to the (Riemannian) ELBO loss (see Mathieu et al 2019)
 
 ## Run experiments
