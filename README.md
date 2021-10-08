@@ -66,13 +66,14 @@ Images are segmentated by clustering the pixelwise latent representations. Some 
  - Clustering algorithm (`--cluster-alg`): 
      - `kmeans`: Euclidean K-Means
      - `kmeans_hyp`: Hyperbolic K-Means
+ - Clusters (`--clusters`): int, number of clusters
  - Score (`--score`): 
      - `dice`: DICE score
      - `iou`: Intersection over Union
- - Score type (`--score-type`):
-     - `bg`: Foreground/background (corresponds to Level 1 in the paper)
-     - `sc`: Level 2 in the paper
-     - `all`: Level 3 in the paper
+ - Score type (`--score-type`): how detailed ground truth annotations to use
+     - `bg`: Foreground/background (corresponds to Level 1 in the paper) (set `--clusters` to `2`)
+     - `sc`: Level 2 in the paper (set `--clusters` to `4`)
+     - `all`: Level 3 in the paper (set `--clusters` to `8`)
 
 Sample command:
 ```
