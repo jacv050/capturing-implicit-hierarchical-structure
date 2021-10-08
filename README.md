@@ -4,7 +4,7 @@
 
 Code for reproducing the experiments in the paper:
 ```
-@inproceedings{mathieu2019poincare,
+@inproceedings{hsu2021capturing,
   title={Capturing implicit hierarchical structure in 3D biomedical images with self-supervised hyperbolic representations},
   author={Hsu, Joy and Gu, Jeffrey and Wu, Gong Her and Chiu, Wah and Yeung, Serena},
   booktitle={Advances in Neural Information Processing Systems},
