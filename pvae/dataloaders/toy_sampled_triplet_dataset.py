@@ -5,7 +5,6 @@ import numpy as np
 from skimage.transform import rescale
 from os import listdir
 from os.path import join
-
 class ToySampledTripletDataset(data.Dataset):
     def __init__(self, width, height, depth, no_background):
                 
@@ -15,7 +14,7 @@ class ToySampledTripletDataset(data.Dataset):
         
         
         all_inputs = []
-        toy_data_dir = '/pasteur/data/hierarchical-toy-dataset/toy_irregular4/test/im_{}.p'
+        toy_data_dir = '../dataset/bio_synthetic/toy_final/test/im_{}.p'
         for i in range(20):
             curr_path = toy_data_dir.format(str(i))
             toy = pickle.load(open(curr_path, 'rb'))
@@ -49,7 +48,8 @@ class ToySampledTripletDataset(data.Dataset):
                             sampled_patch_margin = int(sampled_patch_size / 2)
                                                   
                         if no_background:
-                            ind_input = all_inputs[l]
+                            ind_input = all_inputs[l] #shape 50x50x50
+                            #print(ind_input.shape)
                             parent_patch = ind_input[i-sampled_patch_margin:i+sampled_patch_margin+1,
                                                   j-sampled_patch_margin:j+sampled_patch_margin+1,
                                                   k-sampled_patch_margin:k+sampled_patch_margin+1]

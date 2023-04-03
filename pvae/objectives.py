@@ -43,6 +43,8 @@ def vae_objective(model, x, positive_child=None, negative_child=None, K=1, beta=
         triplet = triplet * triplet_weight
         obj += triplet
         return (qz_x, px_z, lpx_z, kld, triplet, obj) if components else obj
+    else:
+        return (qz_x, px_z, lpx_z, kld, obj) if components else obj
 
 def _iwae_objective_vec(model, x, K):
     """Helper for IWAE estimate for log p_\theta(x) -- full vectorisation."""

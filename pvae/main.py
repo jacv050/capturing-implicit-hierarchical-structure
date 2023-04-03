@@ -12,7 +12,8 @@ import math
 import torch
 from torch import optim
 import numpy as np
-
+from tqdm import tqdm
+import time
 import pickle
 
 from utils import Logger, Timer, save_model, save_vars, probe_infnan
@@ -36,6 +37,8 @@ parser.add_argument('--eval', action='store_true', default=False, help='run infe
 ### Dataset
 parser.add_argument('--data-params', nargs='+', default=[], help='parameters which are passed to the dataset loader')
 parser.add_argument('--data-size', type=int, nargs='+', default=[], help='size/shape of data observations')
+parser.add_argument('--np_zeropadding', default=False, action='store_true', help='Fill p and n with zero padding.')
+parser.add_argument('--no_padding', default=False, action='store_true', help='No padding test set for different sizes.')
 
 ### Metric & Plots
 parser.add_argument('--iwae-samples', type=int, default=0, help='number of samples to compute marginal log likelihood estimate')
@@ -68,9 +71,9 @@ parser.add_argument('--num-hidden-layers', type=int, default=1, metavar='H', hel
 parser.add_argument('--hidden-dim', type=int, default=100, help='number of hidden layers dimensions (default: 100)')
 parser.add_argument('--nl', type=str, default='ReLU', help='non linearity')
 parser.add_argument('--enc', type=str, default='Wrapped', help='allow to choose different implemented encoder',
-                    choices=['Linear', 'Wrapped', 'Mob', 'WrappedConv', 'LinearConv'])
+                    choices=['Linear', 'Wrapped', 'Mob', 'WrappedConv', 'LinearConv', 'WrappedVideoConv'])
 parser.add_argument('--dec', type=str, default='Wrapped', help='allow to choose different implemented decoder',
-                    choices=['Linear', 'Wrapped', 'Geo', 'Mob', 'WrappedConv', 'LinearConv', 'GyroConv'])
+                    choices=['Linear', 'Wrapped', 'Geo', 'Mob', 'WrappedConv', 'LinearConv', 'GyroConv', 'GyroVideoConv', 'LinearVideoConv'])
 
 ## Prior
 parser.add_argument('--prior-iso', action='store_true', default=False, help='isotropic prior')
@@ -121,6 +124,7 @@ torch.save(args, '{}/args.rar'.format(runPath))
 modelC = getattr(models, 'VAE_{}'.format(args.model))
 model = modelC(args).to(device)
 optimizer = optim.Adam(model.parameters(), lr=args.lr, amsgrad=True, betas=(args.beta1, args.beta2))
+
 train_loader, test_loader = model.getDataLoaders(args.batch_size, True, device, *args.data_params)
 loss_function = getattr(objectives, args.obj + '_objective')
 
@@ -129,7 +133,7 @@ def train(epoch, agg):
     model.train()
     
     b_loss, b_recon, b_kl, b_triplet = 0., 0., 0., 0.
-    for i, (parent, positive_child, negative_child, target_norm) in enumerate(train_loader):
+    for i, (parent, positive_child, negative_child, target_norm) in enumerate(tqdm(train_loader)):
         parent = parent.to(device)
         positive_child = positive_child.to(device)
         negative_child = negative_child.to(device)
@@ -146,7 +150,10 @@ def train(epoch, agg):
             qz_x, px_z, lik, kl, loss = loss_function(model, data, K=args.K, beta=args.beta, components=True, analytical_kl=args.analytical_kl)
         
         probe_infnan(loss, "Training loss:")
+        #t1 = time.time()
         loss.backward()
+        #t2 = time.time()
+        #print("{}".format(t2-t1))
         
         if args.clip > 0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
@@ -156,6 +163,7 @@ def train(epoch, agg):
         b_loss += loss.item()
         b_recon += -lik.mean(0).sum().item()
         b_kl += kl.sum(-1).mean(0).sum().item()
+        #print(kl.sum(-1).mean(0).sum().item()/512)
         
         if args.triplet_loss:
             b_triplet += triplet.item()
@@ -176,27 +184,36 @@ def train(epoch, agg):
 def test(epoch, agg):
     model.eval()
     b_loss, b_mlik = 0., 0.
+    b_kl, b_recon = 0.0, 0.0
     with torch.no_grad():
-        for i, (data, labels) in enumerate(test_loader):
+        for i, (data, labels) in enumerate(tqdm(test_loader)):
             data = data.to(device)
+            #print(loss_function(model, data, K=args.K, beta=args.beta, components=True))
             qz_x, px_z, lik, kl, loss = loss_function(model, data, K=args.K, beta=args.beta, components=True)
+            
             if epoch == args.epochs and args.iwae_samples > 0:
                 mlik = objectives.iwae_objective(model, data, K=args.iwae_samples)
                 b_mlik += mlik.sum(-1).item()
             b_loss += loss.item()
-            if i == 0: model.reconstruct(data, runPath, epoch)
+            
+            b_kl += kl.sum(-1).mean(0).sum().item()
+            b_recon += -lik.mean(0).sum().item()
+            #if i == 0: model.reconstruct(data, runPath, epoch)
 
     agg['test_loss'].append(b_loss / len(test_loader.dataset))
     agg['test_mlik'].append(b_mlik / len(test_loader.dataset))
-    print('====>             Test loss: {:.4f} mlik: {:.4f}'.format(agg['test_loss'][-1], agg['test_mlik'][-1]))
+    agg['test_kl'].append(b_kl / len(test_loader.dataset))
+    agg['test_recon'].append(b_recon / len(test_loader.dataset))
+    print('====>             Test loss: {:.4f} mlik: {:.4f} recon: {:.4f} KL: {:.2f}'.format(agg['test_loss'][-1], agg['test_mlik'][-1], agg['test_recon'][-1], agg['test_kl'][-1]))
     
     
 def evaluate():
     model.load_state_dict(torch.load(runPath + '/model.rar'))
+    print("Checkpoint loaded...")
     model.eval()
     all_mus = []
     with torch.no_grad():
-        for i, (data, labels) in enumerate(test_loader):
+        for i, (data, labels) in enumerate(tqdm(test_loader)):
             data = data.to(device)            
             mus = model.getMus(data, runPath)
             mus = mus.data.cpu().numpy()

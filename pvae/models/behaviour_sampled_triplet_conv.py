@@ -19,17 +19,19 @@ from .architectures import EncLinear, DecLinear, EncWrapped, DecWrapped, EncMob,
 
 from pvae.dataloaders.toy_sampled_triplet_dataset import ToySampledTripletDataset
 from pvae.dataloaders.toy_sampled_triplet_test_dataset import ToySampledTripletTestDataset
+from pvae.dataloaders.behaviour_sampled_triplet_dataset import BehaviourSampledTripletDataset
+from pvae.dataloaders.behaviour_sampled_triplet_test_dataset import BehaviourSampledTripletTestDataset
 
 width = 10
 height = 10
 depth = 10
 data_size = torch.Size([1, width, height, depth])
 
-class ToySampledTripletConv(VAE):
+class BehaviourSampledTripletConv(VAE):
     def __init__(self, params):
         c = nn.Parameter(params.c * torch.ones(1), requires_grad=False)
         manifold = getattr(manifolds, params.manifold)(params.latent_dim, c)
-        super(ToySampledTripletConv, self).__init__(
+        super(BehaviourSampledTripletConv, self).__init__(
             eval(params.prior),   # prior distribution
             eval(params.posterior),   # posterior distribution
             dist.Normal,        # likelihood distribution
@@ -54,11 +56,15 @@ class ToySampledTripletConv(VAE):
     def getDataLoaders(batch_size, shuffle=True, device="cuda"):
         kwargs = {'num_workers': 1, 'pin_memory': True} if device == "cuda" else {}
 
-        train_loader = DataLoader(    
-            ToySampledTripletDataset(width, height, depth, no_background=True),
+        #train_loader = DataLoader(    
+        #    ToySampledTripletDataset(width, height, depth, no_background=True),
+        #    batch_size=batch_size, shuffle=True, **kwargs)
+        train_loader = DataLoader(
+            BehaviourSampledTripletDataset(width, height, depth, no_background=False),
             batch_size=batch_size, shuffle=True, **kwargs)
         test_loader = DataLoader(
-            ToySampledTripletTestDataset(width, height, depth),
+            #BehaviourSampledTripletTestDataset(width, height, depth), TODO
+            BehaviourSampledTripletTestDataset(width, height, depth),
             batch_size=batch_size, shuffle=False, **kwargs)
         return train_loader, test_loader
 
@@ -91,4 +97,3 @@ class ToySampledTripletConv(VAE):
         negative_child_mu = self.enc(negative_child)[0]
         
         return qz_x, px_z, zs, parent_mu, positive_child_mu, negative_child_mu
-    

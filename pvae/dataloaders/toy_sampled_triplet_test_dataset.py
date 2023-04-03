@@ -14,7 +14,7 @@ class ToySampledTripletTestDataset(data.Dataset):
         self.depth = depth
         
         all_original_toms = []
-        toy_data_dir = '/pasteur/data/hierarchical-toy-dataset/toy_irregular4/test/im_{}.p'
+        toy_data_dir = '../dataset/bio_synthetic/toy_final/test/im_{}.p'
         for i in range(20):
             curr_path = toy_data_dir.format(str(i))
             toy = pickle.load(open(curr_path, 'rb'))
